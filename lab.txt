@@ -1,2 +1,3 @@
 This is my first Git lab file.
 This file has been updated.
+Now, I am editing the file in GitHub so that I can practice the git pull command.
