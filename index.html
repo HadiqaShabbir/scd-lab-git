@@ -210,6 +210,113 @@
     .btn-add:hover  { background: var(--accent-h); box-shadow: 0 4px 18px rgba(79,110,247,0.38); }
     .btn-add:active { transform: scale(0.97); }
 
+    /* Notes textarea in input area */
+    .notes-row {
+      margin-top: 8px;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.3s ease, opacity 0.25s ease, margin 0.3s ease;
+    }
+    .notes-row.open { max-height: 120px; opacity: 1; }
+    #task-notes {
+      width: 100%;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.88rem;
+      padding: 10px 14px;
+      outline: none;
+      resize: none;
+      height: 80px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      line-height: 1.5;
+    }
+    #task-notes:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,110,247,0.12); }
+    #task-notes::placeholder { color: var(--muted); }
+
+    .btn-notes-toggle {
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-2);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.83rem;
+      font-weight: 500;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: all 0.18s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .btn-notes-toggle:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-lt); }
+    .btn-notes-toggle.active { border-color: var(--accent); color: var(--accent); background: var(--accent-lt); }
+    .btn-notes-toggle svg { width: 14px; height: 14px; }
+
+    /* Inline notes panel on task card */
+    .task-notes-panel {
+      margin-top: 8px;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.3s ease, opacity 0.25s ease;
+    }
+    .task-notes-panel.open { max-height: 300px; opacity: 1; }
+    .task-notes-panel-inner { padding: 12px 14px; }
+    .task-notes-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .task-notes-view {
+      font-size: 0.875rem;
+      color: var(--text-2);
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .task-notes-edit {
+      width: 100%;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem;
+      padding: 9px 12px;
+      outline: none;
+      resize: none;
+      height: 80px;
+      transition: border-color 0.2s;
+      line-height: 1.5;
+      display: none;
+    }
+    .task-notes-edit:focus { border-color: var(--accent); }
+    .task-notes-edit.visible { display: block; }
+    .task-notes-actions {
+      display: flex; gap: 6px; margin-top: 8px; justify-content: flex-end;
+    }
+    .btn-note-save, .btn-note-cancel {
+      border-radius: 7px; font-family: 'Inter', sans-serif; font-size: 0.78rem;
+      font-weight: 600; padding: 5px 13px; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-note-save   { background: var(--accent); color: #fff; border: none; }
+    .btn-note-save:hover { background: var(--accent-h); }
+    .btn-note-cancel { background: transparent; border: 1.5px solid var(--border); color: var(--muted); }
+    .btn-note-cancel:hover { border-color: var(--red); color: var(--red); }
+
+    .has-notes-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); display: inline-block; margin-left: 2px; vertical-align: middle;
+    }
+
     /* Filter bar */
     .filter-bar {
       display: flex; gap: 6px; padding: 14px 22px;
@@ -376,6 +483,15 @@
           <option value="Health">Health</option>
         </select>
         <input type="date" id="due-date" />
+        <button class="btn-notes-toggle" id="notes-toggle-btn" onclick="toggleNotesInput()" title="Add a note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          Add Note
+        </button>
+      </div>
+      <div class="notes-row" id="notes-row">
+        <textarea id="task-notes" placeholder="Write a note or description for this task…" maxlength="500"></textarea>
       </div>
     </div>
 
@@ -494,9 +610,23 @@
             <span class="priority-badge p-${task.priority}">${task.priority}</span>
             <span class="cat-badge">${escHtml(task.category)}</span>
             ${task.due ? `<span class="due-badge${od}">${formatDate(task.due)}${od ? ' — Overdue' : ''}</span>` : ''}
+            ${task.notes ? '<span class="has-notes-dot" title="Has notes"></span>' : ''}
+          </div>
+          <div class="task-notes-panel" id="notes-panel-${task.id}">
+            <div class="task-notes-panel-inner">
+              <div class="task-notes-label">Note</div>
+              <div class="task-notes-view" id="notes-view-${task.id}" ondblclick="startNoteEdit(${task.id})" title="Double-click to edit">${task.notes ? escHtml(task.notes) : '<span style="color:var(--muted);font-style:italic;font-size:0.82rem">No note yet — double-click or use the Edit button below.</span>'}</div>
+              <div style="text-align:right;margin-top:4px"><button onclick="startNoteEdit(${task.id})" style="background:transparent;border:none;color:var(--accent);font-size:0.75rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;padding:0;" id="note-edit-link-${task.id}">Edit Note</button></div>
+              <textarea class="task-notes-edit" id="notes-edit-${task.id}" maxlength="500">${escHtml(task.notes || '')}</textarea>
+              <div class="task-notes-actions" id="notes-actions-${task.id}" style="display:none">
+                <button class="btn-note-cancel" onclick="cancelNoteEdit(${task.id})">Cancel</button>
+                <button class="btn-note-save" onclick="saveNote(${task.id})">Save Note</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="task-actions">
+          <button class="icon-btn edit" onclick="toggleNotesPanel(${task.id})" title="View / edit note">Note</button>
           <button class="icon-btn edit" onclick="editTask(${task.id})">Edit</button>
           <button class="icon-btn" onclick="deleteTask(${task.id})">Delete</button>
         </div>
@@ -511,13 +641,17 @@
     const input = document.getElementById('task-input');
     const text  = input.value.trim();
     if (!text) { input.focus(); showToast('Please enter a task first'); return; }
+    const notesVal = document.getElementById('task-notes').value.trim();
     tasks.unshift({ id: Date.now(), text, done: false,
       priority: document.getElementById('priority-select').value,
       category: document.getElementById('category-select').value,
-      due:      document.getElementById('due-date').value || '' });
+      due:      document.getElementById('due-date').value || '',
+      notes:    notesVal });
     save();
     input.value = '';
     document.getElementById('due-date').value = '';
+    document.getElementById('task-notes').value = '';
+    closeNotesInput();
     render();
     showToast('Task added successfully');
   }
@@ -565,6 +699,75 @@
   document.getElementById('task-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
 
   render();
+
+  // ── Notes input toggle ────────────────────────────────
+  function toggleNotesInput() {
+    const row = document.getElementById('notes-row');
+    const btn = document.getElementById('notes-toggle-btn');
+    const open = row.classList.toggle('open');
+    btn.classList.toggle('active', open);
+    if (open) document.getElementById('task-notes').focus();
+  }
+  function closeNotesInput() {
+    document.getElementById('notes-row').classList.remove('open');
+    document.getElementById('notes-toggle-btn').classList.remove('active');
+  }
+
+  // ── Notes panel on task ───────────────────────────────
+  function toggleNotesPanel(id) {
+    const panel = document.getElementById('notes-panel-' + id);
+    if (!panel) return;
+    const isOpen = panel.classList.toggle('open');
+    if (!isOpen) {
+      cancelNoteEdit(id);
+    } else {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      const view = document.getElementById('notes-view-' + id);
+      if (view) view.style.display = 'block';
+      const edit = document.getElementById('notes-edit-' + id);
+      if (edit) edit.classList.remove('visible');
+      const actions = document.getElementById('notes-actions-' + id);
+      if (actions) actions.style.display = 'none';
+      // If no notes yet, go straight to edit mode
+      if (!task.notes) startNoteEdit(id);
+    }
+  }
+
+  function startNoteEdit(id) {
+    const view    = document.getElementById('notes-view-' + id);
+    const edit    = document.getElementById('notes-edit-' + id);
+    const actions = document.getElementById('notes-actions-' + id);
+    const link    = document.getElementById('note-edit-link-' + id);
+    if (view)    view.style.display = 'none';
+    if (link)    link.style.display = 'none';
+    if (edit)    { edit.classList.add('visible'); edit.focus(); }
+    if (actions) actions.style.display = 'flex';
+  }
+
+  function cancelNoteEdit(id) {
+    const task    = tasks.find(t => t.id === id);
+    const view    = document.getElementById('notes-view-' + id);
+    const edit    = document.getElementById('notes-edit-' + id);
+    const actions = document.getElementById('notes-actions-' + id);
+    const link    = document.getElementById('note-edit-link-' + id);
+    if (edit && task)  edit.value = task.notes || '';
+    if (view)    view.style.display = 'block';
+    if (link)    link.style.display = '';
+    if (edit)    edit.classList.remove('visible');
+    if (actions) actions.style.display = 'none';
+  }
+
+  function saveNote(id) {
+    const task = tasks.find(t => t.id === id); if (!task) return;
+    const edit = document.getElementById('notes-edit-' + id);
+    task.notes = edit ? edit.value.trim() : '';
+    save(); render();
+    // Re-open the panel after re-render
+    const panel = document.getElementById('notes-panel-' + id);
+    if (panel) panel.classList.add('open');
+    showToast('Note saved');
+  }
 </script>
 </body>
 </html>
